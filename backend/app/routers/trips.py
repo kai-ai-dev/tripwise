@@ -1,45 +1,43 @@
-from fastapi import APIRouter, BackgroundTasks, Depends
-from app.schemas.trip import PlanRequest, RegenerateRequest, TripPlanOut, StatusOut
+from fastapi import APIRouter, BackgroundTasks
+from app.schemas.trip import PlanRequest, StatusOut
 from app.services.planner import create_plan, regenerate_plan
-from app.core.deps import verify_token
+from app.core.supabase import supabase
 
 router = APIRouter()
 
 @router.post("/plan")
-async def plan_trip(
-    body: PlanRequest,
-    background_tasks: BackgroundTasks,
-    token: str = Depends(verify_token),
-):
-    """创建新的规划任务，立即返回 trip_id，后台异步生成"""
+async def plan_trip(body: PlanRequest, background_tasks: BackgroundTasks):
     trip_id = await create_plan(body, background_tasks)
     return {"trip_id": trip_id, "status": "pending"}
 
-@router.get("/{trip_id}", response_model=TripPlanOut)
-async def get_trip(trip_id: str, token: str = Depends(verify_token)):
-    """获取计划详情（含每日行程和预算拆分）"""
-    # TODO: 从 Supabase 查询并返回
-    pass
+@router.get("/{trip_id}")
+async def get_trip(trip_id: str):
+    trip = supabase.table("trip_plans").select("*").eq("id", trip_id).single().execute().data
+    if not trip:
+        return None
+    days = supabase.table("itinerary_days").select("*, itinerary_items(*)").eq("trip_plan_id", trip_id).order("day_index").execute().data
+    trip["days"] = days
+    return trip
 
 @router.get("/{trip_id}/status", response_model=StatusOut)
 async def get_status(trip_id: str):
-    """轮询任务生成状态，供前端进度条使用"""
-    # TODO: 从 planner_runs 表查询最新状态
-    pass
+    run = supabase.table("planner_runs").select("*").eq("trip_plan_id", trip_id).order("created_at", desc=True).limit(1).execute()
+    if not run.data:
+        return StatusOut(id=trip_id, status="pending")
+    r = run.data[0]
+    return StatusOut(
+        id=trip_id,
+        status=r["status"],
+        progress_hint="AI 正在规划中..." if r["status"] == "generating" else None,
+        latency_ms=r.get("latency_ms"),
+        error_message=r.get("error_message"),
+    )
 
 @router.post("/{trip_id}/regenerate")
-async def regenerate(
-    trip_id: str,
-    body: RegenerateRequest,
-    background_tasks: BackgroundTasks,
-    token: str = Depends(verify_token),
-):
-    """按原条件重新生成行程"""
-    await regenerate_plan(trip_id, body, background_tasks)
+async def regenerate(trip_id: str, background_tasks: BackgroundTasks):
+    await regenerate_plan(trip_id, None, background_tasks)
     return {"trip_id": trip_id, "status": "pending"}
 
 @router.patch("/{trip_id}/preferences")
-async def update_preferences(trip_id: str, token: str = Depends(verify_token)):
-    """更新偏好后重新生成"""
-    # TODO
-    pass
+async def update_preferences(trip_id: str):
+    return {"ok": True}
