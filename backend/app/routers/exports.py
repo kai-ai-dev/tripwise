@@ -1,13 +1,12 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
-from app.core.deps import verify_token
 from app.core.supabase import supabase
 from app.services.exporter import build_markdown
 
 router = APIRouter()
 
 @router.post("/{trip_id}/export")
-async def export_trip(trip_id: str, token: str = Depends(verify_token)):
+async def export_trip(trip_id: str):
     """导出行程为 Markdown 文本"""
     trip = supabase.table("trip_plans").select("*").eq("id", trip_id).single().execute().data
     days = supabase.table("itinerary_days") \
