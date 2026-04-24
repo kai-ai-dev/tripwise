@@ -6,7 +6,8 @@ from datetime import datetime
 from fastapi import BackgroundTasks
 from app.core.supabase import supabase
 
-DEEPSEEK_KEY = "sk-d3651e6dab5744a4967c43c684d7622f"
+import os
+DEEPSEEK_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 def _run_generation_sync(trip_id, run_id, origin, destination, start_date, end_date, budget, preferences, pace):
     os.environ.pop("http_proxy", None)
