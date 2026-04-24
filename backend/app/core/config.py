@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_SERVICE_ROLE_KEY: str
     APP_ENV: str = "development"
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = ["*"]
 
     class Config:
         env_file = ".env"
