@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from fastapi.responses import PlainTextResponse
+from urllib.parse import quote
 from app.core.supabase import supabase
 from app.services.exporter import build_markdown
 
@@ -16,7 +17,8 @@ async def export_trip(trip_id: str):
         .execute().data
     md = build_markdown(trip, days)
     filename = f"行程_{trip['destination']}_{trip['start_date']}.md"
+    encoded = quote(filename)
     return PlainTextResponse(
         content=md,
-        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded}"},
     )
