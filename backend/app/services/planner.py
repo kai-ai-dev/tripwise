@@ -1,12 +1,14 @@
+# -*- coding: utf-8 -*-
 import uuid
 import asyncio
 import os
 import json
+import threading
+import httpx
 from datetime import datetime
 from fastapi import BackgroundTasks
 from app.core.supabase import supabase
 
-import os
 DEEPSEEK_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 def _run_generation_sync(trip_id, run_id, origin, destination, start_date, end_date, budget, preferences, pace):
@@ -14,14 +16,11 @@ def _run_generation_sync(trip_id, run_id, origin, destination, start_date, end_d
     os.environ.pop("https_proxy", None)
     os.environ.pop("ALL_PROXY", None)
 
-    from openai import OpenAI
     start_time = datetime.utcnow()
 
     try:
         supabase.table("planner_runs").update({"status": "generating"}).eq("id", run_id).execute()
         supabase.table("trip_plans").update({"status": "generating"}).eq("id", trip_id).execute()
-
-        client = OpenAI(api_key=DEEPSEEK_KEY, base_url="https://api.deepseek.com")
 
         system_msg = "You are a travel planner. Return ONLY valid JSON, no other text, no markdown."
         user_msg = (
@@ -34,16 +33,27 @@ def _run_generation_sync(trip_id, run_id, origin, destination, start_date, end_d
             f"\"notes\": \"string\", \"estimated_cost\": number}}]}}]}}"
         )
 
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": user_msg},
-            ],
-            max_tokens=4096,
-        )
+        with httpx.Client(timeout=120.0) as client:
+            response = client.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {DEEPSEEK_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "deepseek-chat",
+                    "messages": [
+                        {"role": "system", "content": system_msg},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "max_tokens": 4096,
+                    "response_format": {"type": "json_object"},
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
 
-        raw = response.choices[0].message.content.strip()
+        raw = data["choices"][0]["message"]["content"].strip()
         if "```" in raw:
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -95,14 +105,6 @@ def _run_generation_sync(trip_id, run_id, origin, destination, start_date, end_d
         }).eq("id", run_id).execute()
 
 
-async def _run_generation(trip_id, run_id, origin, destination, start_date, end_date, budget, preferences, pace):
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(
-        None, _run_generation_sync,
-        trip_id, run_id, origin, destination, start_date, end_date, budget, preferences, pace
-    )
-
-
 async def create_plan(body, background_tasks: BackgroundTasks) -> str:
     trip_id = str(uuid.uuid4())
     run_id = str(uuid.uuid4())
@@ -126,13 +128,15 @@ async def create_plan(body, background_tasks: BackgroundTasks) -> str:
         "status": "pending",
     }).execute()
 
-    background_tasks.add_task(
-        _run_generation,
-        trip_id, run_id,
-        body.origin, body.destination,
-        str(body.start_date), str(body.end_date),
-        body.budget, body.preferences, body.pace
+    t = threading.Thread(
+        target=_run_generation_sync,
+        args=(trip_id, run_id, body.origin, body.destination,
+              str(body.start_date), str(body.end_date),
+              body.budget, body.preferences, body.pace)
     )
+    t.daemon = True
+    t.start()
+
     return trip_id
 
 
@@ -149,4 +153,4 @@ async def regenerate_plan(trip_id, body, background_tasks):
         preferences=original["preferences"] or [],
         pace=original["pace"],
     )
-    await create_plan(plan, background_tasks)
+    return await create_plan(plan, background_tasks)
