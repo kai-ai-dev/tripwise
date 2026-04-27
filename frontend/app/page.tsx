@@ -76,11 +76,9 @@ export default function Home() {
                 </button>
               </>
             ) : (
-          <>
               <Link href="/login" className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors">
-              登录 / 注册
+                登录 / 注册
               </Link>
-          </>
             )
           )}
         </div>
@@ -126,7 +124,6 @@ export default function Home() {
               </Link>
             )}
           </div>
-
           {user && (
             <p className="mt-4 text-sm text-gray-500">已登录为 {user.email}</p>
           )}
