@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Navbar from '@/components/Navbar'
+
 
 export default function AdminPage() {
   const [stats, setStats] = useState<any>(null)
@@ -46,13 +48,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-white/5">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center text-xs font-bold">T</div>
-          <span className="font-semibold tracking-tight">Tripwise</span>
-        </Link>
-        <span className="text-xs text-gray-500 bg-gray-800 border border-white/5 px-3 py-1 rounded-full">后台管理</span>
-      </nav>
+    <Navbar />
 
       <div className="max-w-4xl mx-auto px-6 py-10">
         {/* Header */}
