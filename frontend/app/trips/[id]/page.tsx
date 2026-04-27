@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Navbar from '@/components/Navbar'
 
 const CATEGORY_COLORS: Record<string, string> = {
   '交通': 'bg-blue-500/10 text-blue-400',
@@ -77,15 +78,7 @@ export default function TripDetailPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-white/5">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center text-xs font-bold">T</div>
-          <span className="font-semibold tracking-tight">Tripwise</span>
-        </Link>
-        <Link href="/history" className="text-sm text-gray-400 hover:text-white transition-colors">
-          ← 我的行程
-        </Link>
-      </nav>
+    <Navbar />
 
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Header */}
