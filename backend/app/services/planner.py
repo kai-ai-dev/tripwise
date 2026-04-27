@@ -105,12 +105,13 @@ def _run_generation_sync(trip_id, run_id, origin, destination, start_date, end_d
         }).eq("id", run_id).execute()
 
 
-async def create_plan(body, background_tasks: BackgroundTasks) -> str:
+async def create_plan(body, background_tasks: BackgroundTasks, user_id: str = None) -> str:
     trip_id = str(uuid.uuid4())
     run_id = str(uuid.uuid4())
 
     supabase.table("trip_plans").insert({
         "id": trip_id,
+        "user_id": user_id,
         "origin": body.origin,
         "destination": body.destination,
         "start_date": str(body.start_date),
