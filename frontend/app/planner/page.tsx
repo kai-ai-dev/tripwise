@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import { supabase } from '@/lib/supabase'
+const { user, loading: authLoading } = useAuth()
+if (authLoading) return <div className="min-h-screen bg-gray-950" />
 
 const PREFERENCES = ['美食', '历史文化', '自然风光', '购物', '艺术', '户外运动', '亲子', '摄影']
 const PACE_OPTIONS = [
