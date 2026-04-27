@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import { supabase } from '@/lib/supabase'
+const { user, loading: authLoading } = useAuth()
+if (authLoading) return <div className="min-h-screen bg-gray-950" />
 
 const COLORS = [
   'from-blue-500 to-indigo-500',
