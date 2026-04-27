@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
+import { supabase } from '@/lib/supabase'
 
 const CATEGORY_COLORS: Record<string, string> = {
   '交通': 'bg-blue-500/10 text-blue-400',
@@ -20,6 +21,12 @@ export default function TripDetailPage() {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
+
+  // Feedback state
+  const [score, setScore] = useState(0)
+  const [comment, setComment] = useState('')
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [feedbackDone, setFeedbackDone] = useState(false)
 
   useEffect(() => {
     const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -51,6 +58,24 @@ export default function TripDetailPage() {
     setExporting(false)
   }
 
+  const handleFeedback = async () => {
+    if (score === 0) return
+    setFeedbackLoading(true)
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    await fetch(`${API}/api/trips/${id}/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ score, comment }),
+    })
+    setFeedbackLoading(false)
+    setFeedbackDone(true)
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="text-center">
@@ -77,8 +102,7 @@ export default function TripDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Nav */}
-    <Navbar />
+      <Navbar />
 
       <div className="max-w-3xl mx-auto px-6 py-10">
         {/* Header */}
@@ -130,10 +154,9 @@ export default function TripDetailPage() {
         </div>
 
         {/* Days */}
-        <div className="space-y-4">
-          {trip.days?.map((day: any, di: number) => (
+        <div className="space-y-4 mb-6">
+          {trip.days?.map((day: any) => (
             <div key={day.day_index} className="bg-gray-900 border border-white/5 rounded-2xl overflow-hidden">
-              {/* Day header */}
               <div className="px-5 py-4 flex justify-between items-center border-b border-white/5">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-sm font-bold">
@@ -144,17 +167,11 @@ export default function TripDetailPage() {
                     <div className="text-xs text-gray-500">{day.date}</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-medium text-white">¥{Number(day.day_budget).toLocaleString()}</div>
-                </div>
+                <div className="font-medium text-white">¥{Number(day.day_budget).toLocaleString()}</div>
               </div>
-
-              {/* Summary */}
               <div className="px-5 py-3 border-b border-white/5">
                 <p className="text-sm text-gray-400">{day.summary}</p>
               </div>
-
-              {/* Items */}
               <div className="divide-y divide-white/5">
                 {day.items?.map((item: any, i: number) => (
                   <div key={i} className="px-5 py-4 flex gap-4">
@@ -170,9 +187,7 @@ export default function TripDetailPage() {
                       </div>
                       {item.notes && <p className="text-xs text-gray-500 leading-relaxed">{item.notes}</p>}
                     </div>
-                    <div className="text-sm text-gray-400 shrink-0 font-medium">
-                      ¥{item.estimated_cost}
-                    </div>
+                    <div className="text-sm text-gray-400 shrink-0 font-medium">¥{item.estimated_cost}</div>
                   </div>
                 ))}
               </div>
@@ -180,8 +195,52 @@ export default function TripDetailPage() {
           ))}
         </div>
 
+        {/* Feedback */}
+        <div className="bg-gray-900 border border-white/5 rounded-2xl p-5 mb-6">
+          <h2 className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-4">行程评价</h2>
+          {feedbackDone ? (
+            <div className="text-center py-4">
+              <div className="text-2xl mb-2">🎉</div>
+              <p className="text-emerald-400 text-sm">感谢你的反馈！</p>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2 mb-4">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setScore(s)}
+                    className={`text-2xl transition-all hover:scale-110 ${s <= score ? 'opacity-100' : 'opacity-30'}`}
+                  >
+                    ⭐
+                  </button>
+                ))}
+                {score > 0 && (
+                  <span className="text-sm text-gray-400 ml-2 self-center">
+                    {['', '很差', '较差', '一般', '不错', '非常棒'][score]}
+                  </span>
+                )}
+              </div>
+              <textarea
+                value={comment}
+                onChange={e => setComment(e.target.value)}
+                placeholder="留下你的评论（选填）"
+                rows={3}
+                className="w-full bg-gray-800 border border-white/5 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 resize-none mb-3"
+              />
+              <button
+                onClick={handleFeedback}
+                disabled={score === 0 || feedbackLoading}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-xl text-sm transition-all"
+              >
+                {feedbackLoading ? '提交中...' : '提交评价'}
+              </button>
+            </>
+          )}
+        </div>
+
         {/* PDF placeholder */}
-        <div className="mt-6 text-center">
+        <div className="text-center">
           <button disabled className="relative px-6 py-2.5 border border-white/5 rounded-xl text-sm text-gray-600 cursor-not-allowed">
             导出 PDF
             <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">即将上线</span>
