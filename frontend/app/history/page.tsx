@@ -1,10 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { supabase } from '@/lib/supabase'
-const { user, loading: authLoading } = useAuth()
-if (authLoading) return <div className="min-h-screen bg-gray-950" />
 
 const COLORS = [
   'from-blue-500 to-indigo-500',
@@ -16,21 +15,31 @@ const COLORS = [
 ]
 
 export default function HistoryPage() {
+  const router = useRouter()
   const [plans, setPlans] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [authChecked, setAuthChecked] = useState(false)
 
-useEffect(() => {
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-  supabase.auth.getSession().then(({ data }) => {
-    const token = data.session?.access_token
-    fetch(`${API}/api/history`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+  useEffect(() => {
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    supabase.auth.getSession().then(({ data }) => {
+      const token = data.session?.access_token
+
+      // 未登录跳转到登录页
+      if (!token) {
+        router.push('/login')
+        return
+      }
+
+      setAuthChecked(true)
+      fetch(`${API}/api/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.json())
+        .then(d => { setPlans(Array.isArray(d) ? d : []); setLoading(false) })
+        .catch(() => setLoading(false))
     })
-      .then(r => r.json())
-      .then(d => { setPlans(Array.isArray(d) ? d : []); setLoading(false) })
-      .catch(() => setLoading(false))
-  })
-}, [])
+  }, [router])
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     success:    { label: '已完成', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
@@ -45,13 +54,13 @@ useEffect(() => {
     return days > 0 ? days : null
   }
 
+  if (!authChecked) return <div className="min-h-screen bg-gray-950" />
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Nav */}
-    <Navbar />
+      <Navbar />
 
       <div className="max-w-4xl mx-auto px-6 py-12">
-        {/* Header */}
         <div className="mb-10">
           <h1 className="text-3xl font-bold mb-2">我的旅行库</h1>
           <p className="text-gray-400">你规划过的每一段旅程</p>
@@ -79,10 +88,8 @@ useEffect(() => {
                 const color = COLORS[i % COLORS.length]
                 return (
                   <div key={plan.id} className="group relative bg-gray-900 border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 transition-all hover:-translate-y-0.5">
-                    {/* Color bar */}
                     <div className={`h-1.5 bg-gradient-to-r ${color}`} />
                     <div className="p-5">
-                      {/* Title row */}
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h3 className="font-semibold text-lg leading-tight">
@@ -92,30 +99,17 @@ useEffect(() => {
                             <span className={`text-xs px-2 py-0.5 rounded-full border ${cfg.color}`}>
                               {cfg.label}
                             </span>
-                            {days && (
-                              <span className="text-xs text-gray-500">{days} 天</span>
-                            )}
+                            {days && <span className="text-xs text-gray-500">{days} 天</span>}
                           </div>
                         </div>
                         <div className="text-right shrink-0 ml-4">
                           <div className="text-lg font-semibold text-white">¥{Number(plan.budget).toLocaleString()}</div>
-                          {days && (
-                            <div className="text-xs text-gray-500">约 ¥{Math.round(plan.budget / days)}/天</div>
-                          )}
+                          {days && <div className="text-xs text-gray-500">约 ¥{Math.round(plan.budget / days)}/天</div>}
                         </div>
                       </div>
-
-                      {/* Date */}
-                      <div className="text-sm text-gray-500 mb-4">
-                        {plan.start_date} — {plan.end_date}
-                      </div>
-
-                      {/* Action */}
+                      <div className="text-sm text-gray-500 mb-4">{plan.start_date} — {plan.end_date}</div>
                       {plan.status === 'success' ? (
-                        <Link
-                          href={`/trips/${plan.id}`}
-                          className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-xl text-sm text-gray-300 hover:text-white transition-all"
-                        >
+                        <Link href={`/trips/${plan.id}`} className="flex items-center justify-center gap-1.5 w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 rounded-xl text-sm text-gray-300 hover:text-white transition-all">
                           查看行程 →
                         </Link>
                       ) : plan.status === 'generating' || plan.status === 'pending' ? (
@@ -124,10 +118,7 @@ useEffect(() => {
                           生成中...
                         </div>
                       ) : (
-                        <Link
-                          href="/planner"
-                          className="flex items-center justify-center w-full py-2.5 bg-white/5 border border-white/5 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors"
-                        >
+                        <Link href="/planner" className="flex items-center justify-center w-full py-2.5 bg-white/5 border border-white/5 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors">
                           重新规划
                         </Link>
                       )}
