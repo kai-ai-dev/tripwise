@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Navbar from '@/components/Navbar'
 
 const PREFERENCES = ['美食', '历史文化', '自然风光', '购物', '艺术', '户外运动', '亲子', '摄影']
 const PACE_OPTIONS = [
@@ -67,13 +68,7 @@ export default function PlannerPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Nav */}
-      <nav className="flex items-center justify-between px-8 py-4 border-b border-white/5">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center text-xs font-bold">T</div>
-          <span className="font-semibold tracking-tight">Tripwise</span>
-        </Link>
-        <Link href="/history" className="text-sm text-gray-400 hover:text-white transition-colors">我的行程</Link>
-      </nav>
+      <Navbar />
 
       <div className="max-w-2xl mx-auto px-6 py-12">
         {/* Header */}
