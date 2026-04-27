@@ -1,4 +1,8 @@
+'use client'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 const demoTrips = [
   {
@@ -26,6 +30,30 @@ const steps = [
 ]
 
 export default function Home() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null)
+      setAuthLoading(false)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  const handleCTA = () => {
+    router.push(user ? '/planner' : '/login')
+  }
+
   return (
     <main className="min-h-screen bg-gray-950 text-white overflow-hidden">
       {/* Nav */}
@@ -34,17 +62,33 @@ export default function Home() {
           <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center text-xs font-bold">T</div>
           <span className="font-semibold text-white tracking-tight">Tripwise</span>
         </div>
-        <div className="flex items-center gap-6">
-          <Link href="/history" className="text-sm text-gray-400 hover:text-white transition-colors">我的行程</Link>
-          <Link href="/planner" className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors">
-            开始规划
-          </Link>
+        <div className="flex items-center gap-4">
+          {!authLoading && (
+            user ? (
+              <>
+                <Link href="/history" className="text-sm text-gray-400 hover:text-white transition-colors">我的行程</Link>
+                <span className="text-xs text-gray-500 hidden sm:block">{user.email}</span>
+                <button
+                  onClick={handleSignOut}
+                  className="text-sm text-gray-400 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition-all"
+                >
+                  退出
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/history" className="text-sm text-gray-400 hover:text-white transition-colors">我的行程</Link>
+                <Link href="/login" className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors">
+                  登录 / 注册
+                </Link>
+              </>
+            )
+          )}
         </div>
       </nav>
 
       {/* Hero */}
       <section className="relative pt-32 pb-24 px-6 text-center">
-        {/* Background glow */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-blue-600/20 rounded-full blur-3xl" />
           <div className="absolute top-40 left-1/3 w-[300px] h-[300px] bg-indigo-600/10 rounded-full blur-3xl" />
@@ -68,19 +112,25 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/planner"
+            <button
+              onClick={handleCTA}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl text-lg font-medium transition-all hover:scale-105 hover:shadow-lg hover:shadow-blue-500/25"
             >
-              生成我的行程 →
-            </Link>
-            <Link
-              href="/history"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-8 py-4 rounded-xl text-lg font-medium transition-colors"
-            >
-              查看历史计划
-            </Link>
+              {user ? '生成我的行程 →' : '登录开始规划 →'}
+            </button>
+            {user && (
+              <Link
+                href="/history"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-8 py-4 rounded-xl text-lg font-medium transition-colors"
+              >
+                查看历史计划
+              </Link>
+            )}
           </div>
+
+          {user && (
+            <p className="mt-4 text-sm text-gray-500">已登录为 {user.email}</p>
+          )}
         </div>
       </section>
 
@@ -133,13 +183,15 @@ export default function Home() {
       <section className="px-6 pb-24">
         <div className="max-w-2xl mx-auto text-center bg-gradient-to-br from-blue-600/20 to-cyan-600/10 border border-blue-500/20 rounded-3xl p-12">
           <h2 className="text-3xl font-bold mb-4">准备好出发了吗？</h2>
-          <p className="text-gray-400 mb-8">填写旅行信息，AI 帮你搞定剩下的一切</p>
-          <Link
-            href="/planner"
+          <p className="text-gray-400 mb-8">
+            {user ? '填写旅行信息，AI 帮你搞定剩下的一切' : '登录后即可开始规划你的专属行程'}
+          </p>
+          <button
+            onClick={handleCTA}
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl text-lg font-medium transition-all hover:scale-105"
           >
-            立即开始规划 →
-          </Link>
+            {user ? '立即开始规划 →' : '登录 / 注册 →'}
+          </button>
         </div>
       </section>
 
