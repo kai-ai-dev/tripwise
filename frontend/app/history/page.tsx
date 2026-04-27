@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
+import { supabase } from '@/lib/supabase'
 
 const COLORS = [
   'from-blue-500 to-indigo-500',
@@ -16,13 +17,18 @@ export default function HistoryPage() {
   const [plans, setPlans] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    fetch(`${API}/api/history`)
+useEffect(() => {
+  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  supabase.auth.getSession().then(({ data }) => {
+    const token = data.session?.access_token
+    fetch(`${API}/api/history`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(r => r.json())
       .then(d => { setPlans(Array.isArray(d) ? d : []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  })
+}, [])
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     success:    { label: '已完成', color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
