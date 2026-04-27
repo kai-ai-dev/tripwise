@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Navbar from '@/components/Navbar'
 
 const COLORS = [
   'from-blue-500 to-indigo-500',
