@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 export default function AdminPage() {
   const [stats, setStats] = useState<any>(null)
@@ -21,74 +22,137 @@ export default function AdminPage() {
 
   const filtered = filter === 'all' ? runs : runs.filter(r => r.status === filter)
 
-  const statusColor: Record<string, string> = {
-    success: 'bg-green-100 text-green-700',
-    failed: 'bg-red-100 text-red-600',
-    generating: 'bg-yellow-100 text-yellow-700',
-    pending: 'bg-gray-100 text-gray-500',
+  const statusConfig: Record<string, { label: string; color: string }> = {
+    success:    { label: '成功',   color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' },
+    failed:     { label: '失败',   color: 'text-red-400 bg-red-400/10 border-red-400/20' },
+    generating: { label: '生成中', color: 'text-amber-400 bg-amber-400/10 border-amber-400/20' },
+    pending:    { label: '等待中', color: 'text-gray-400 bg-gray-400/10 border-gray-400/20' },
   }
 
+  const filterOptions = [
+    { key: 'all', label: '全部' },
+    { key: 'success', label: '成功' },
+    { key: 'failed', label: '失败' },
+    { key: 'generating', label: '生成中' },
+    { key: 'pending', label: '等待' },
+  ]
+
+  const successCount = runs.filter(r => r.status === 'success').length
+  const failedCount = runs.filter(r => r.status === 'failed').length
+  const avgLatency = runs.filter(r => r.latency_ms).length
+    ? Math.round(runs.filter(r => r.latency_ms).reduce((s, r) => s + r.latency_ms, 0) / runs.filter(r => r.latency_ms).length / 1000 * 10) / 10
+    : null
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">后台管理</h1>
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Nav */}
+      <nav className="flex items-center justify-between px-8 py-4 border-b border-white/5">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center text-xs font-bold">T</div>
+          <span className="font-semibold tracking-tight">Tripwise</span>
+        </Link>
+        <span className="text-xs text-gray-500 bg-gray-800 border border-white/5 px-3 py-1 rounded-full">后台管理</span>
+      </nav>
 
-        {/* 统计卡片 */}
-        {stats && (
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <p className="text-sm text-gray-500 mb-1">总任务数</p>
-              <p className="text-3xl font-bold text-gray-900">{stats.total_runs}</p>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <p className="text-sm text-gray-500 mb-1">成功率</p>
-              <p className="text-3xl font-bold text-green-600">{stats.success_rate}%</p>
-            </div>
+      <div className="max-w-4xl mx-auto px-6 py-10">
+        {/* Header */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold mb-2">后台管理</h1>
+          <p className="text-gray-400">任务运行状态与平台健康指标</p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="bg-gray-900 border border-white/5 rounded-2xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">总任务数</p>
+            <p className="text-3xl font-bold">{stats?.total_runs ?? runs.length}</p>
           </div>
-        )}
+          <div className="bg-gray-900 border border-white/5 rounded-2xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">成功率</p>
+            <p className="text-3xl font-bold text-emerald-400">
+              {stats?.success_rate ?? (runs.length ? Math.round(successCount / runs.length * 100) : 0)}%
+            </p>
+          </div>
+          <div className="bg-gray-900 border border-white/5 rounded-2xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">失败任务</p>
+            <p className="text-3xl font-bold text-red-400">{failedCount}</p>
+          </div>
+          <div className="bg-gray-900 border border-white/5 rounded-2xl p-5">
+            <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">平均耗时</p>
+            <p className="text-3xl font-bold text-blue-400">{avgLatency ? `${avgLatency}s` : '—'}</p>
+          </div>
+        </div>
 
-        {/* 筛选 */}
-        <div className="flex gap-2 mb-4">
-          {['all', 'success', 'failed', 'generating', 'pending'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                filter === f ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'
-              }`}>
-              {f === 'all' ? '全部' : f === 'success' ? '成功' : f === 'failed' ? '失败' : f === 'generating' ? '生成中' : '等待'}
+        {/* Filter */}
+        <div className="flex gap-2 mb-6">
+          {filterOptions.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-4 py-1.5 rounded-lg text-sm border transition-all ${
+                filter === f.key
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-transparent text-gray-400 border-white/10 hover:border-white/20 hover:text-white'
+              }`}
+            >
+              {f.label}
+              {f.key !== 'all' && (
+                <span className="ml-1.5 text-xs opacity-60">
+                  {runs.filter(r => r.status === f.key).length}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* 任务列表 */}
+        {/* Runs list */}
         {loading ? (
-          <div className="text-center py-12 text-gray-400">加载中...</div>
+          <div className="flex items-center justify-center py-24">
+            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 border border-dashed border-white/10 rounded-2xl text-gray-500">
+            暂无数据
+          </div>
         ) : (
           <div className="space-y-2">
-            {filtered.map(run => (
-              <div key={run.id} className="bg-white rounded-xl border border-gray-100 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[run.status] || statusColor.pending}`}>
-                      {run.status}
-                    </span>
-                    <span className="text-sm text-gray-600 font-mono">{run.trip_plan_id?.slice(0, 8)}...</span>
-                    <span className="text-xs text-gray-400">{run.provider}</span>
+            {filtered.map(run => {
+              const cfg = statusConfig[run.status] || statusConfig.pending
+              return (
+                <div key={run.id} className="bg-gray-900 border border-white/5 hover:border-white/10 rounded-xl p-4 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${cfg.color}`}>
+                        {cfg.label}
+                      </span>
+                      <span className="text-sm text-gray-400 font-mono">
+                        {run.trip_plan_id?.slice(0, 8)}...
+                      </span>
+                      <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded">
+                        {run.provider}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-right">
+                      {run.latency_ms && (
+                        <span className={`text-sm font-medium ${run.latency_ms > 30000 ? 'text-amber-400' : 'text-gray-400'}`}>
+                          {(run.latency_ms / 1000).toFixed(1)}s
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-600">
+                        {run.created_at?.slice(0, 16).replace('T', ' ')}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    {run.latency_ms && (
-                      <span className="text-xs text-gray-400">{(run.latency_ms / 1000).toFixed(1)}s</span>
-                    )}
-                    <p className="text-xs text-gray-400">{run.created_at?.slice(0, 16).replace('T', ' ')}</p>
-                  </div>
+                  {run.error_message && (
+                    <div className="mt-3 bg-red-500/5 border border-red-500/10 rounded-lg p-3">
+                      <p className="text-xs text-red-400 font-mono leading-relaxed">
+                        {run.error_message?.slice(0, 200)}
+                      </p>
+                    </div>
+                  )}
                 </div>
-                {run.error_message && (
-                  <p className="text-xs text-red-500 mt-2 bg-red-50 rounded p-2 font-mono">{run.error_message?.slice(0, 200)}</p>
-                )}
-              </div>
-            ))}
-            {filtered.length === 0 && (
-              <div className="text-center py-8 text-gray-400">暂无数据</div>
-            )}
+              )
+            })}
           </div>
         )}
       </div>
