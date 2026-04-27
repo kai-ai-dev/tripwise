@@ -76,12 +76,11 @@ export default function Home() {
                 </button>
               </>
             ) : (
-              <>
-                <Link href="/history" className="text-sm text-gray-400 hover:text-white transition-colors">我的行程</Link>
-                <Link href="/login" className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors">
-                  登录 / 注册
-                </Link>
-              </>
+          <>
+              <Link href="/login" className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-colors">
+              登录 / 注册
+              </Link>
+          </>
             )
           )}
         </div>
