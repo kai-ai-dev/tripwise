@@ -1,13 +1,25 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Request
 from app.schemas.trip import PlanRequest, StatusOut
 from app.services.planner import create_plan, regenerate_plan
 from app.core.supabase import supabase
 
 router = APIRouter()
 
+def get_user_id(request: Request):
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+        try:
+            user = supabase.auth.get_user(token)
+            return user.user.id
+        except:
+            pass
+    return None
+
 @router.post("/plan")
-async def plan_trip(body: PlanRequest, background_tasks: BackgroundTasks):
-    trip_id = await create_plan(body, background_tasks)
+async def plan_trip(request: Request, body: PlanRequest, background_tasks: BackgroundTasks):
+    user_id = get_user_id(request)
+    trip_id = await create_plan(body, background_tasks, user_id=user_id)
     return {"trip_id": trip_id, "status": "pending"}
 
 @router.get("/{trip_id}")
