@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
+import { supabase } from '@/lib/supabase'
 
 const PREFERENCES = ['美食', '历史文化', '自然风光', '购物', '艺术', '户外运动', '亲子', '摄影']
 const PACE_OPTIONS = [
@@ -33,11 +34,16 @@ export default function PlannerPage() {
     setStatus('正在提交规划请求...')
     try {
       const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const res = await fetch(`${API}/api/trips/plan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, budget: Number(form.budget) }),
-      })
+  const { data: sessionData } = await supabase.auth.getSession()
+  const token = sessionData.session?.access_token
+  const res = await fetch(`${API}/api/trips/plan`, {
+    method: 'POST',
+      headers: {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+    body: JSON.stringify({ ...form, budget: Number(form.budget) }),
+        })
       const data = await res.json()
       const tripId = data.trip_id
       setStatus('AI 正在生成行程，请稍候...')
